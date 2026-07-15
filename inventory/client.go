@@ -40,6 +40,10 @@ func InitializeDBClient(l logging.Logger,
 		l.Info("Database schema is up to date.")
 	}
 
+	if err := ensureFederatedIdentitySchema(l, client, ctx); err != nil {
+		return nil, fmt.Errorf("failed to ensure federated identity schema: %w", err)
+	}
+
 	//createMockData(client, ctx)
 	return client, nil
 }

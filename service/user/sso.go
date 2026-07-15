@@ -33,27 +33,27 @@ const (
 // ---------------------------------------------------------------------------
 const (
 	feishuAuthURL  = "https://accounts.feishu.cn/open-apis/authen/v1/authorize"
-	feishuTokenURL = "https://accounts.feishu.cn/oauth/v3/token"
+	feishuTokenURL = "https://open.feishu.cn/open-apis/authen/v2/oauth/token"
 	feishuUserURL  = "https://open.feishu.cn/open-apis/authen/v1/user_info"
 )
 
 // feishuTokenResponse is the v3 token endpoint response.
 type feishuTokenResponse struct {
-	Code              int    `json:"code"`
-	AccessToken       string `json:"access_token"`
-	ExpiresIn         int    `json:"expires_in"`
-	RefreshToken      string `json:"refresh_token"`
-	RefreshExpiresIn  int    `json:"refresh_token_expires_in"`
-	TokenType         string `json:"token_type"`
-	Scope             string `json:"scope"`
-	Error             string `json:"error"`
-	ErrorDescription  string `json:"error_description"`
+	Code             int    `json:"code"`
+	AccessToken      string `json:"access_token"`
+	ExpiresIn        int    `json:"expires_in"`
+	RefreshToken     string `json:"refresh_token"`
+	RefreshExpiresIn int    `json:"refresh_token_expires_in"`
+	TokenType        string `json:"token_type"`
+	Scope            string `json:"scope"`
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
 }
 
 // feishuUserResponse is the user_info endpoint response.
 type feishuUserResponse struct {
-	Code int           `json:"code"`
-	Msg  string        `json:"msg"`
+	Code int            `json:"code"`
+	Msg  string         `json:"msg"`
 	Data feishuUserData `json:"data"`
 }
 
@@ -158,6 +158,7 @@ type (
 // Handle processes the SSO callback. It returns the redirect URL for the frontend.
 func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 	dep := dependency.FromContext(c)
+	l := dep.Logger()
 
 	if s.Error != "" {
 		return "", serializer.NewError(serializer.CodeParamErr,
@@ -188,6 +189,7 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 		return "", serializer.NewError(serializer.CodeParamErr,
 			"SSO provider mismatch", nil)
 	}
+	l.Info("SSO callback state validated: provider=%q", s.Provider)
 
 	providers := dep.SettingProvider().SSOProviders(c)
 	prov := findProvider(providers, s.Provider)
@@ -197,14 +199,19 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 
 	// Exchange code for token
 	callbackURL := buildSSOCallbackURL(dep.SettingProvider().SiteURL(c), s.Provider)
+	l.Info("SSO token exchange started: provider=%q", s.Provider)
 	tokenResp, err := exchangeFeishuToken(prov.ClientID, prov.ClientSecret, s.Code, callbackURL)
 	if err != nil {
+		l.Warning("SSO token exchange failed: provider=%q error=%s", s.Provider, err)
 		return "", err
 	}
+	l.Info("SSO token exchange completed: provider=%q", s.Provider)
 
 	// Fetch user info
+	l.Info("SSO user info lookup started: provider=%q", s.Provider)
 	userInfo, err := fetchFeishuUser(tokenResp.AccessToken)
 	if err != nil {
+		l.Warning("SSO user info lookup failed: provider=%q error=%s", s.Provider, err)
 		return "", err
 	}
 
@@ -212,6 +219,7 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 		return "", serializer.NewError(serializer.CodeInternalSetting,
 			"Feishu returned empty open_id", nil)
 	}
+	l.Info("SSO user info lookup completed: provider=%q", s.Provider)
 
 	// Resolve or create user
 	fedClient := dep.FederatedIdentityClient()
@@ -221,7 +229,10 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 	existingBind, err := fedClient.GetByProviderSubject(ctx, s.Provider, userInfo.Data.OpenID)
 	if err == nil && existingBind != nil && existingBind.Edges.User != nil {
 		// Existing binding — update last_used_at
-		_ = fedClient.MarkUsed(ctx, existingBind.ID)
+		if err := fedClient.MarkUsed(ctx, existingBind.ID); err != nil {
+			l.Warning("SSO binding last-used update failed: provider=%q binding_id=%d error=%s", s.Provider, existingBind.ID, err)
+		}
+		l.Info("SSO existing binding resolved: provider=%q user_id=%d", s.Provider, existingBind.Edges.User.ID)
 
 		// Set user into context for token issuance
 		util.WithValue(c, inventory.UserCtx{}, existingBind.Edges.User)
@@ -229,8 +240,16 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 		// Build redirect URL with ticket
 		return buildSSORedirect(c, dep, state.Redirect, existingBind.Edges.User)
 	}
+	if !ent.IsNotFound(err) {
+		l.Error("SSO binding lookup failed: provider=%q error=%s", s.Provider, err)
+		return "", serializer.NewError(serializer.CodeDBError, "Failed to resolve SSO identity", err)
+	}
+	if !prov.AllowSignup {
+		l.Warning("SSO signup denied for unbound identity: provider=%q", s.Provider)
+		return "", serializer.NewError(serializer.CodeNoPermissionErr, "SSO signup is disabled", nil)
+	}
 
-	// No existing binding — create a new user
+	// No existing binding — create a new user and its binding atomically.
 	// Use open_id as synthetic email; Feishu name as nick
 	email := fmt.Sprintf("%s@feishu.sso.local", userInfo.Data.OpenID)
 	nick := userInfo.Data.Name
@@ -246,7 +265,19 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 		avatar = userInfo.Data.AvatarURL
 	}
 
-	newUser, err := userClient.Create(c, &inventory.NewUserArgs{
+	txUserClient, tx, txCtx, err := inventory.WithTx(ctx, userClient)
+	if err != nil {
+		l.Error("SSO transaction start failed: provider=%q error=%s", s.Provider, err)
+		return "", serializer.NewError(serializer.CodeDBError, "Failed to start SSO signup transaction", err)
+	}
+	txFedClient, _, txCtx, err := inventory.WithTx(txCtx, fedClient)
+	if err != nil {
+		_ = inventory.Rollback(tx)
+		l.Error("SSO binding transaction setup failed: provider=%q error=%s", s.Provider, err)
+		return "", serializer.NewError(serializer.CodeDBError, "Failed to start SSO signup transaction", err)
+	}
+
+	newUser, err := txUserClient.Create(txCtx, &inventory.NewUserArgs{
 		Email:         email,
 		Nick:          nick,
 		PlainPassword: "", // SSO-only user, no password
@@ -255,17 +286,25 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 		Avatar:        avatar,
 	})
 	if err != nil {
-		// Check if user with this email already exists (synthetic email collision — extremely unlikely)
+		_ = inventory.Rollback(tx)
+		l.Warning("SSO user creation failed: provider=%q error=%s", s.Provider, err)
 		return "", serializer.NewError(serializer.CodeDBError,
 			"Failed to create SSO user", err)
 	}
 
 	// Create federated identity binding
-	_, err = fedClient.Create(c, newUser.ID, s.Provider, userInfo.Data.OpenID, userInfo.Data.UnionID)
+	_, err = txFedClient.Create(txCtx, newUser.ID, s.Provider, userInfo.Data.OpenID, userInfo.Data.UnionID)
 	if err != nil {
+		_ = inventory.Rollback(tx)
+		l.Error("SSO binding creation failed: provider=%q user_id=%d error=%s", s.Provider, newUser.ID, err)
 		return "", serializer.NewError(serializer.CodeDBError,
 			"Failed to create SSO binding", err)
 	}
+	if err := inventory.Commit(tx); err != nil {
+		l.Error("SSO signup transaction commit failed: provider=%q user_id=%d error=%s", s.Provider, newUser.ID, err)
+		return "", serializer.NewError(serializer.CodeDBError, "Failed to save SSO identity", err)
+	}
+	l.Info("SSO user and binding created: provider=%q user_id=%d", s.Provider, newUser.ID)
 
 	util.WithValue(c, inventory.UserCtx{}, newUser)
 
@@ -289,9 +328,11 @@ func buildSSORedirect(c *gin.Context, dep dependency.Dep, originalRedirect strin
 			"Failed to serialize login response", err)
 	}
 	if err := dep.KV().Set(ssoTicketPrefix+ticket, string(ticketData), ssoTicketTTL); err != nil {
+		dep.Logger().Error("SSO ticket storage failed: user_id=%d error=%s", u.ID, err)
 		return "", serializer.NewError(serializer.CodeInternalSetting,
 			"Failed to store SSO ticket", err)
 	}
+	dep.Logger().Info("SSO login ticket issued: user_id=%d", u.ID)
 
 	// Build redirect URL
 	frontendBase := dep.SettingProvider().SiteURL(c)
@@ -323,6 +364,7 @@ func (s *SSOFinishService) Finish(c *gin.Context) (*BuiltinLoginResponse, error)
 
 	raw, ok := kv.Get(ssoTicketPrefix + s.Ticket)
 	if !ok {
+		dep.Logger().Warning("SSO ticket exchange failed: ticket not found")
 		return nil, serializer.NewError(serializer.CodeNotFound,
 			"SSO ticket expired or invalid", nil)
 	}
@@ -330,9 +372,11 @@ func (s *SSOFinishService) Finish(c *gin.Context) (*BuiltinLoginResponse, error)
 
 	var resp BuiltinLoginResponse
 	if err := json.Unmarshal([]byte(raw.(string)), &resp); err != nil {
+		dep.Logger().Error("SSO ticket exchange failed: malformed ticket payload error=%s", err)
 		return nil, serializer.NewError(serializer.CodeInternalSetting,
 			"SSO ticket corrupted", err)
 	}
+	dep.Logger().Info("SSO ticket exchange completed: user_id=%s", resp.User.ID)
 
 	return &resp, nil
 }

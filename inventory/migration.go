@@ -30,6 +30,27 @@ func needMigration(client *ent.Client, ctx context.Context, requiredDbVersion st
 	return c == 0
 }
 
+// ensureFederatedIdentitySchema applies the SSO schema independently of the
+// application release marker. Existing installations can carry a 4.14.0
+// version marker while missing this later-added table. The preliminary query
+// keeps normal startup cheap; only a missing or inaccessible table triggers
+// Ent's idempotent schema synchronization, which preserves the complete
+// foreign-key graph across SQLite, MySQL, and PostgreSQL.
+func ensureFederatedIdentitySchema(l logging.Logger, client *ent.Client, ctx context.Context) error {
+	if _, err := client.FederatedIdentity.Query().Limit(1).Count(ctx); err == nil {
+		return nil
+	}
+
+	l.Warning("Federated identity schema is missing or inaccessible; applying idempotent schema repair...")
+	if err := client.Schema.Create(ctx); err != nil {
+		return fmt.Errorf("synchronize schema: %w", err)
+	}
+	if _, err := client.FederatedIdentity.Query().Limit(1).Count(ctx); err != nil {
+		return fmt.Errorf("verify federated identity schema: %w", err)
+	}
+	return nil
+}
+
 func migrate(l logging.Logger, client *ent.Client, ctx context.Context, kv cache.Driver, requiredDbVersion string) error {
 	l.Info("Start initializing database schema...")
 	l.Info("Creating basic table schema...")
