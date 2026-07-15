@@ -374,7 +374,7 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
 						return dep.SettingProvider().SSOEnabled(c)
 					}),
-					controllers.FromUri[usersvc.SSOStartService](usersvc.SSOStartParameterCtx{}),
+					controllers.FromUriAndQuery[usersvc.SSOStartService](usersvc.SSOStartParameterCtx{}),
 					controllers.SSOStart,
 				)
 				// SSO callback
@@ -382,7 +382,7 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
 						return dep.SettingProvider().SSOEnabled(c)
 					}),
-					controllers.FromUri[usersvc.SSOCallbackService](usersvc.SSOCallbackParameterCtx{}),
+					controllers.FromUriAndQuery[usersvc.SSOCallbackService](usersvc.SSOCallbackParameterCtx{}),
 					controllers.SSOCallback,
 				)
 				// Exchange SSO ticket for login token

@@ -251,7 +251,7 @@ func (s *SSOCallbackService) Handle(c *gin.Context) (string, error) {
 
 	// No existing binding — create a new user and its binding atomically.
 	// Use open_id as synthetic email; Feishu name as nick
-	email := fmt.Sprintf("%s@feishu.sso.local", userInfo.Data.OpenID)
+	email := fmt.Sprintf("%s@feishu.sso.local", userInfo.Data.OpenID[len(userInfo.Data.OpenID)-6:])
 	nick := userInfo.Data.Name
 	if nick == "" {
 		nick = userInfo.Data.EnName

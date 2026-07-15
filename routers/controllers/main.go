@@ -113,6 +113,28 @@ func FromUri[T any](ctxKey any) gin.HandlerFunc {
 	}
 }
 
+// FromUriAndQuery parses and validates URI parameters and query parameters into
+// the same service value. It is intended for callbacks whose route identifies
+// a resource while the provider returns its payload in the query string.
+func FromUriAndQuery[T any](ctxKey any) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var service T
+		if err := c.ShouldBindUri(&service); err != nil {
+			c.JSON(200, ErrorResponse(err))
+			c.Abort()
+			return
+		}
+		if err := c.ShouldBindQuery(&service); err != nil {
+			c.JSON(200, ErrorResponse(err))
+			c.Abort()
+			return
+		}
+
+		c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxKey, &service))
+		c.Next()
+	}
+}
+
 // ParametersFromContext retrieves request parameters from context
 func ParametersFromContext[T any](c *gin.Context, ctxKey any) T {
 	return c.Request.Context().Value(ctxKey).(T)
