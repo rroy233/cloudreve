@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/cloudreve/Cloudreve/v4/ent/davaccount"
 	"github.com/cloudreve/Cloudreve/v4/ent/entity"
+	"github.com/cloudreve/Cloudreve/v4/ent/federatedidentity"
 	"github.com/cloudreve/Cloudreve/v4/ent/file"
 	"github.com/cloudreve/Cloudreve/v4/ent/fsevent"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
@@ -297,6 +298,21 @@ func (uc *UserCreate) AddOauthGrants(o ...*OAuthGrant) *UserCreate {
 		ids[i] = o[i].ID
 	}
 	return uc.AddOauthGrantIDs(ids...)
+}
+
+// AddFederatedIdentityIDs adds the "federated_identities" edge to the FederatedIdentity entity by IDs.
+func (uc *UserCreate) AddFederatedIdentityIDs(ids ...int) *UserCreate {
+	uc.mutation.AddFederatedIdentityIDs(ids...)
+	return uc
+}
+
+// AddFederatedIdentities adds the "federated_identities" edges to the FederatedIdentity entity.
+func (uc *UserCreate) AddFederatedIdentities(f ...*FederatedIdentity) *UserCreate {
+	ids := make([]int, len(f))
+	for i := range f {
+		ids[i] = f[i].ID
+	}
+	return uc.AddFederatedIdentityIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -622,6 +638,22 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(oauthgrant.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.FederatedIdentitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

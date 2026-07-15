@@ -365,6 +365,35 @@ func initMasterRouter(dep dependency.Dep) *gin.Engine {
 					controllers.UserIssueToken,
 				)
 			}
+
+			// SSO login
+			sso := session.Group("sso")
+			{
+				// Initiate SSO login
+				sso.GET(":provider",
+					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+						return dep.SettingProvider().SSOEnabled(c)
+					}),
+					controllers.FromUri[usersvc.SSOStartService](usersvc.SSOStartParameterCtx{}),
+					controllers.SSOStart,
+				)
+				// SSO callback
+				sso.GET(":provider/callback",
+					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+						return dep.SettingProvider().SSOEnabled(c)
+					}),
+					controllers.FromUri[usersvc.SSOCallbackService](usersvc.SSOCallbackParameterCtx{}),
+					controllers.SSOCallback,
+				)
+				// Exchange SSO ticket for login token
+				sso.POST("finish",
+					middleware.IsFunctionEnabled(func(c *gin.Context) bool {
+						return dep.SettingProvider().SSOEnabled(c)
+					}),
+					controllers.FromJSON[usersvc.SSOFinishService](usersvc.SSOFinishParameterCtx{}),
+					controllers.SSOFinish,
+				)
+			}
 		}
 
 		// 用户相关路由

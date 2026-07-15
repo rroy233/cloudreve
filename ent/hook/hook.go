@@ -45,6 +45,18 @@ func (f EntityFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EntityMutation", m)
 }
 
+// The FederatedIdentityFunc type is an adapter to allow the use of ordinary
+// function as FederatedIdentity mutator.
+type FederatedIdentityFunc func(context.Context, *ent.FederatedIdentityMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f FederatedIdentityFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.FederatedIdentityMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.FederatedIdentityMutation", m)
+}
+
 // The FileFunc type is an adapter to allow the use of ordinary
 // function as File mutator.
 type FileFunc func(context.Context, *ent.FileMutation) (ent.Value, error)

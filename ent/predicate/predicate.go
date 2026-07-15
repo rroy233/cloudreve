@@ -15,6 +15,9 @@ type DirectLink func(*sql.Selector)
 // Entity is the predicate function for entity builders.
 type Entity func(*sql.Selector)
 
+// FederatedIdentity is the predicate function for federatedidentity builders.
+type FederatedIdentity func(*sql.Selector)
+
 // File is the predicate function for file builders.
 type File func(*sql.Selector)
 

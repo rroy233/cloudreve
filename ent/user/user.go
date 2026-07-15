@@ -59,6 +59,8 @@ const (
 	EdgeEntities = "entities"
 	// EdgeOauthGrants holds the string denoting the oauth_grants edge name in mutations.
 	EdgeOauthGrants = "oauth_grants"
+	// EdgeFederatedIdentities holds the string denoting the federated_identities edge name in mutations.
+	EdgeFederatedIdentities = "federated_identities"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// GroupTable is the table that holds the group relation/edge.
@@ -124,6 +126,13 @@ const (
 	OauthGrantsInverseTable = "oauth_grants"
 	// OauthGrantsColumn is the table column denoting the oauth_grants relation/edge.
 	OauthGrantsColumn = "user_id"
+	// FederatedIdentitiesTable is the table that holds the federated_identities relation/edge.
+	FederatedIdentitiesTable = "federated_identities"
+	// FederatedIdentitiesInverseTable is the table name for the FederatedIdentity entity.
+	// It exists in this package in order to avoid circular dependency with the "federatedidentity" package.
+	FederatedIdentitiesInverseTable = "federated_identities"
+	// FederatedIdentitiesColumn is the table column denoting the federated_identities relation/edge.
+	FederatedIdentitiesColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -386,6 +395,20 @@ func ByOauthGrants(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newOauthGrantsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByFederatedIdentitiesCount orders the results by federated_identities count.
+func ByFederatedIdentitiesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newFederatedIdentitiesStep(), opts...)
+	}
+}
+
+// ByFederatedIdentities orders the results by federated_identities terms.
+func ByFederatedIdentities(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newFederatedIdentitiesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newGroupStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -447,5 +470,12 @@ func newOauthGrantsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OauthGrantsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, OauthGrantsTable, OauthGrantsColumn),
+	)
+}
+func newFederatedIdentitiesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(FederatedIdentitiesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, FederatedIdentitiesTable, FederatedIdentitiesColumn),
 	)
 }

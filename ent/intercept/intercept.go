@@ -11,6 +11,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/davaccount"
 	"github.com/cloudreve/Cloudreve/v4/ent/directlink"
 	"github.com/cloudreve/Cloudreve/v4/ent/entity"
+	"github.com/cloudreve/Cloudreve/v4/ent/federatedidentity"
 	"github.com/cloudreve/Cloudreve/v4/ent/file"
 	"github.com/cloudreve/Cloudreve/v4/ent/fsevent"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
@@ -162,6 +163,33 @@ func (f TraverseEntity) Traverse(ctx context.Context, q ent.Query) error {
 		return f(ctx, q)
 	}
 	return fmt.Errorf("unexpected query type %T. expect *ent.EntityQuery", q)
+}
+
+// The FederatedIdentityFunc type is an adapter to allow the use of ordinary function as a Querier.
+type FederatedIdentityFunc func(context.Context, *ent.FederatedIdentityQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f FederatedIdentityFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.FederatedIdentityQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.FederatedIdentityQuery", q)
+}
+
+// The TraverseFederatedIdentity type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseFederatedIdentity func(context.Context, *ent.FederatedIdentityQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseFederatedIdentity) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseFederatedIdentity) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.FederatedIdentityQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.FederatedIdentityQuery", q)
 }
 
 // The FileFunc type is an adapter to allow the use of ordinary function as a Querier.
@@ -524,6 +552,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.DirectLinkQuery, predicate.DirectLink, directlink.OrderOption]{typ: ent.TypeDirectLink, tq: q}, nil
 	case *ent.EntityQuery:
 		return &query[*ent.EntityQuery, predicate.Entity, entity.OrderOption]{typ: ent.TypeEntity, tq: q}, nil
+	case *ent.FederatedIdentityQuery:
+		return &query[*ent.FederatedIdentityQuery, predicate.FederatedIdentity, federatedidentity.OrderOption]{typ: ent.TypeFederatedIdentity, tq: q}, nil
 	case *ent.FileQuery:
 		return &query[*ent.FileQuery, predicate.File, file.OrderOption]{typ: ent.TypeFile, tq: q}, nil
 	case *ent.FsEventQuery:

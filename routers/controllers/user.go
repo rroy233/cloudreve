@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"net/http"
+
 	"github.com/cloudreve/Cloudreve/v4/application/dependency"
 	"github.com/cloudreve/Cloudreve/v4/ent"
 	"github.com/cloudreve/Cloudreve/v4/inventory"
@@ -58,6 +60,52 @@ func FinishRegAuthn(c *gin.Context) {
 	}
 
 	c.JSON(200, serializer.Response{Data: res})
+}
+
+// SSOStart initiates SSO login by redirecting to the identity provider.
+func SSOStart(c *gin.Context) {
+	service := ParametersFromContext[*user.SSOStartService](c, user.SSOStartParameterCtx{})
+	redirectURL, err := service.Start(c)
+	if err != nil {
+		c.JSON(200, serializer.Err(c, err))
+		return
+	}
+
+	c.Redirect(http.StatusFound, redirectURL)
+	c.Abort()
+}
+
+// SSOCallback handles the callback from the identity provider.
+func SSOCallback(c *gin.Context) {
+	dep := dependency.FromContext(c)
+	service := ParametersFromContext[*user.SSOCallbackService](c, user.SSOCallbackParameterCtx{})
+	redirectURL, err := service.Handle(c)
+	if err != nil {
+		// Redirect to login page with error
+		frontendURL := *dep.SettingProvider().SiteURL(c)
+		frontendURL.Path = "/session"
+		q := frontendURL.Query()
+		q.Set("sso_error", err.Error())
+		frontendURL.RawQuery = q.Encode()
+		c.Redirect(http.StatusFound, frontendURL.String())
+		c.Abort()
+		return
+	}
+
+	c.Redirect(http.StatusFound, redirectURL)
+	c.Abort()
+}
+
+// SSOFinish exchanges an SSO ticket for the standard login response.
+func SSOFinish(c *gin.Context) {
+	service := ParametersFromContext[*user.SSOFinishService](c, user.SSOFinishParameterCtx{})
+	resp, err := service.Finish(c)
+	if err != nil {
+		c.JSON(200, serializer.Err(c, err))
+		return
+	}
+
+	c.JSON(200, serializer.Response{Data: resp})
 }
 
 // UserDeletePasskey deletes user passkey

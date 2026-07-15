@@ -54,6 +54,7 @@ func (User) Edges() []ent.Edge {
 		edge.To("fsevents", FsEvent.Type),
 		edge.To("entities", Entity.Type),
 		edge.To("oauth_grants", OAuthGrant.Type),
+			edge.To("federated_identities", FederatedIdentity.Type),
 	}
 }
 

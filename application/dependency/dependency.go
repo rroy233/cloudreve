@@ -92,6 +92,8 @@ type Dep interface {
 	DirectLinkClient() inventory.DirectLinkClient
 	// OAuthClientClient Creates a new inventory.OAuthClientClient instance for access DB OAuth client store.
 	OAuthClientClient() inventory.OAuthClientClient
+	// FederatedIdentityClient Creates a new inventory.FederatedIdentityClient instance for access DB federated identity store.
+	FederatedIdentityClient() inventory.FederatedIdentityClient
 	// HashIDEncoder Get a singleton hashid.Encoder instance for encoding/decoding hashids.
 	HashIDEncoder() hashid.Encoder
 	// TokenAuth Get a singleton auth.TokenAuth instance for token authentication.
@@ -170,6 +172,7 @@ type dependency struct {
 	directLinkClient      inventory.DirectLinkClient
 	fsEventClient         inventory.FsEventClient
 	oAuthClient           inventory.OAuthClientClient
+	federatedIdentityClient inventory.FederatedIdentityClient
 	emailClient           email.Driver
 	generalAuth           auth.Auth
 	hashidEncoder         hashid.Encoder
@@ -558,6 +561,14 @@ func (d *dependency) OAuthClientClient() inventory.OAuthClientClient {
 	}
 
 	return inventory.NewOAuthClientClient(d.DBClient(), d.ConfigProvider().Database().Type)
+}
+
+func (d *dependency) FederatedIdentityClient() inventory.FederatedIdentityClient {
+	if d.federatedIdentityClient != nil {
+		return d.federatedIdentityClient
+	}
+
+	return inventory.NewFederatedIdentityClient(d.DBClient())
 }
 
 func (d *dependency) MimeDetector(ctx context.Context) mime.MimeDetector {

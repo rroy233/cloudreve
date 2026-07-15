@@ -102,6 +102,44 @@ var (
 			},
 		},
 	}
+	// FederatedIdentitiesColumns holds the columns for the "federated_identities" table.
+	FederatedIdentitiesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "updated_at", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "subject", Type: field.TypeString},
+		{Name: "union_id", Type: field.TypeString, Nullable: true},
+		{Name: "last_used_at", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// FederatedIdentitiesTable holds the schema information for the "federated_identities" table.
+	FederatedIdentitiesTable = &schema.Table{
+		Name:       "federated_identities",
+		Columns:    FederatedIdentitiesColumns,
+		PrimaryKey: []*schema.Column{FederatedIdentitiesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "federated_identities_users_federated_identities",
+				Columns:    []*schema.Column{FederatedIdentitiesColumns[8]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "federatedidentity_provider_subject",
+				Unique:  true,
+				Columns: []*schema.Column{FederatedIdentitiesColumns[4], FederatedIdentitiesColumns[5]},
+			},
+			{
+				Name:    "federatedidentity_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{FederatedIdentitiesColumns[8]},
+			},
+		},
+	}
 	// FilesColumns holds the columns for the "files" table.
 	FilesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -531,6 +569,7 @@ var (
 		DavAccountsTable,
 		DirectLinksTable,
 		EntitiesTable,
+		FederatedIdentitiesTable,
 		FilesTable,
 		FsEventsTable,
 		GroupsTable,
@@ -553,6 +592,7 @@ func init() {
 	DirectLinksTable.ForeignKeys[0].RefTable = FilesTable
 	EntitiesTable.ForeignKeys[0].RefTable = StoragePoliciesTable
 	EntitiesTable.ForeignKeys[1].RefTable = UsersTable
+	FederatedIdentitiesTable.ForeignKeys[0].RefTable = UsersTable
 	FilesTable.ForeignKeys[0].RefTable = FilesTable
 	FilesTable.ForeignKeys[1].RefTable = StoragePoliciesTable
 	FilesTable.ForeignKeys[2].RefTable = UsersTable

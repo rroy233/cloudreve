@@ -18,6 +18,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/davaccount"
 	"github.com/cloudreve/Cloudreve/v4/ent/directlink"
 	"github.com/cloudreve/Cloudreve/v4/ent/entity"
+	"github.com/cloudreve/Cloudreve/v4/ent/federatedidentity"
 	"github.com/cloudreve/Cloudreve/v4/ent/file"
 	"github.com/cloudreve/Cloudreve/v4/ent/fsevent"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
@@ -46,6 +47,8 @@ type Client struct {
 	DirectLink *DirectLinkClient
 	// Entity is the client for interacting with the Entity builders.
 	Entity *EntityClient
+	// FederatedIdentity is the client for interacting with the FederatedIdentity builders.
+	FederatedIdentity *FederatedIdentityClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
 	// FsEvent is the client for interacting with the FsEvent builders.
@@ -86,6 +89,7 @@ func (c *Client) init() {
 	c.DavAccount = NewDavAccountClient(c.config)
 	c.DirectLink = NewDirectLinkClient(c.config)
 	c.Entity = NewEntityClient(c.config)
+	c.FederatedIdentity = NewFederatedIdentityClient(c.config)
 	c.File = NewFileClient(c.config)
 	c.FsEvent = NewFsEventClient(c.config)
 	c.Group = NewGroupClient(c.config)
@@ -189,24 +193,25 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		DavAccount:    NewDavAccountClient(cfg),
-		DirectLink:    NewDirectLinkClient(cfg),
-		Entity:        NewEntityClient(cfg),
-		File:          NewFileClient(cfg),
-		FsEvent:       NewFsEventClient(cfg),
-		Group:         NewGroupClient(cfg),
-		Metadata:      NewMetadataClient(cfg),
-		Node:          NewNodeClient(cfg),
-		OAuthClient:   NewOAuthClientClient(cfg),
-		OAuthGrant:    NewOAuthGrantClient(cfg),
-		Passkey:       NewPasskeyClient(cfg),
-		Setting:       NewSettingClient(cfg),
-		Share:         NewShareClient(cfg),
-		StoragePolicy: NewStoragePolicyClient(cfg),
-		Task:          NewTaskClient(cfg),
-		User:          NewUserClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		DavAccount:        NewDavAccountClient(cfg),
+		DirectLink:        NewDirectLinkClient(cfg),
+		Entity:            NewEntityClient(cfg),
+		FederatedIdentity: NewFederatedIdentityClient(cfg),
+		File:              NewFileClient(cfg),
+		FsEvent:           NewFsEventClient(cfg),
+		Group:             NewGroupClient(cfg),
+		Metadata:          NewMetadataClient(cfg),
+		Node:              NewNodeClient(cfg),
+		OAuthClient:       NewOAuthClientClient(cfg),
+		OAuthGrant:        NewOAuthGrantClient(cfg),
+		Passkey:           NewPasskeyClient(cfg),
+		Setting:           NewSettingClient(cfg),
+		Share:             NewShareClient(cfg),
+		StoragePolicy:     NewStoragePolicyClient(cfg),
+		Task:              NewTaskClient(cfg),
+		User:              NewUserClient(cfg),
 	}, nil
 }
 
@@ -224,24 +229,25 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:           ctx,
-		config:        cfg,
-		DavAccount:    NewDavAccountClient(cfg),
-		DirectLink:    NewDirectLinkClient(cfg),
-		Entity:        NewEntityClient(cfg),
-		File:          NewFileClient(cfg),
-		FsEvent:       NewFsEventClient(cfg),
-		Group:         NewGroupClient(cfg),
-		Metadata:      NewMetadataClient(cfg),
-		Node:          NewNodeClient(cfg),
-		OAuthClient:   NewOAuthClientClient(cfg),
-		OAuthGrant:    NewOAuthGrantClient(cfg),
-		Passkey:       NewPasskeyClient(cfg),
-		Setting:       NewSettingClient(cfg),
-		Share:         NewShareClient(cfg),
-		StoragePolicy: NewStoragePolicyClient(cfg),
-		Task:          NewTaskClient(cfg),
-		User:          NewUserClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		DavAccount:        NewDavAccountClient(cfg),
+		DirectLink:        NewDirectLinkClient(cfg),
+		Entity:            NewEntityClient(cfg),
+		FederatedIdentity: NewFederatedIdentityClient(cfg),
+		File:              NewFileClient(cfg),
+		FsEvent:           NewFsEventClient(cfg),
+		Group:             NewGroupClient(cfg),
+		Metadata:          NewMetadataClient(cfg),
+		Node:              NewNodeClient(cfg),
+		OAuthClient:       NewOAuthClientClient(cfg),
+		OAuthGrant:        NewOAuthGrantClient(cfg),
+		Passkey:           NewPasskeyClient(cfg),
+		Setting:           NewSettingClient(cfg),
+		Share:             NewShareClient(cfg),
+		StoragePolicy:     NewStoragePolicyClient(cfg),
+		Task:              NewTaskClient(cfg),
+		User:              NewUserClient(cfg),
 	}, nil
 }
 
@@ -271,9 +277,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.DavAccount, c.DirectLink, c.Entity, c.File, c.FsEvent, c.Group, c.Metadata,
-		c.Node, c.OAuthClient, c.OAuthGrant, c.Passkey, c.Setting, c.Share,
-		c.StoragePolicy, c.Task, c.User,
+		c.DavAccount, c.DirectLink, c.Entity, c.FederatedIdentity, c.File, c.FsEvent,
+		c.Group, c.Metadata, c.Node, c.OAuthClient, c.OAuthGrant, c.Passkey, c.Setting,
+		c.Share, c.StoragePolicy, c.Task, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -283,9 +289,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.DavAccount, c.DirectLink, c.Entity, c.File, c.FsEvent, c.Group, c.Metadata,
-		c.Node, c.OAuthClient, c.OAuthGrant, c.Passkey, c.Setting, c.Share,
-		c.StoragePolicy, c.Task, c.User,
+		c.DavAccount, c.DirectLink, c.Entity, c.FederatedIdentity, c.File, c.FsEvent,
+		c.Group, c.Metadata, c.Node, c.OAuthClient, c.OAuthGrant, c.Passkey, c.Setting,
+		c.Share, c.StoragePolicy, c.Task, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -300,6 +306,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.DirectLink.mutate(ctx, m)
 	case *EntityMutation:
 		return c.Entity.mutate(ctx, m)
+	case *FederatedIdentityMutation:
+		return c.FederatedIdentity.mutate(ctx, m)
 	case *FileMutation:
 		return c.File.mutate(ctx, m)
 	case *FsEventMutation:
@@ -813,6 +821,157 @@ func (c *EntityClient) mutate(ctx context.Context, m *EntityMutation) (Value, er
 		return (&EntityDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Entity mutation op: %q", m.Op())
+	}
+}
+
+// FederatedIdentityClient is a client for the FederatedIdentity schema.
+type FederatedIdentityClient struct {
+	config
+}
+
+// NewFederatedIdentityClient returns a client for the FederatedIdentity from the given config.
+func NewFederatedIdentityClient(c config) *FederatedIdentityClient {
+	return &FederatedIdentityClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `federatedidentity.Hooks(f(g(h())))`.
+func (c *FederatedIdentityClient) Use(hooks ...Hook) {
+	c.hooks.FederatedIdentity = append(c.hooks.FederatedIdentity, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `federatedidentity.Intercept(f(g(h())))`.
+func (c *FederatedIdentityClient) Intercept(interceptors ...Interceptor) {
+	c.inters.FederatedIdentity = append(c.inters.FederatedIdentity, interceptors...)
+}
+
+// Create returns a builder for creating a FederatedIdentity entity.
+func (c *FederatedIdentityClient) Create() *FederatedIdentityCreate {
+	mutation := newFederatedIdentityMutation(c.config, OpCreate)
+	return &FederatedIdentityCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of FederatedIdentity entities.
+func (c *FederatedIdentityClient) CreateBulk(builders ...*FederatedIdentityCreate) *FederatedIdentityCreateBulk {
+	return &FederatedIdentityCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *FederatedIdentityClient) MapCreateBulk(slice any, setFunc func(*FederatedIdentityCreate, int)) *FederatedIdentityCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &FederatedIdentityCreateBulk{err: fmt.Errorf("calling to FederatedIdentityClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*FederatedIdentityCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &FederatedIdentityCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for FederatedIdentity.
+func (c *FederatedIdentityClient) Update() *FederatedIdentityUpdate {
+	mutation := newFederatedIdentityMutation(c.config, OpUpdate)
+	return &FederatedIdentityUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *FederatedIdentityClient) UpdateOne(fi *FederatedIdentity) *FederatedIdentityUpdateOne {
+	mutation := newFederatedIdentityMutation(c.config, OpUpdateOne, withFederatedIdentity(fi))
+	return &FederatedIdentityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *FederatedIdentityClient) UpdateOneID(id int) *FederatedIdentityUpdateOne {
+	mutation := newFederatedIdentityMutation(c.config, OpUpdateOne, withFederatedIdentityID(id))
+	return &FederatedIdentityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for FederatedIdentity.
+func (c *FederatedIdentityClient) Delete() *FederatedIdentityDelete {
+	mutation := newFederatedIdentityMutation(c.config, OpDelete)
+	return &FederatedIdentityDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *FederatedIdentityClient) DeleteOne(fi *FederatedIdentity) *FederatedIdentityDeleteOne {
+	return c.DeleteOneID(fi.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *FederatedIdentityClient) DeleteOneID(id int) *FederatedIdentityDeleteOne {
+	builder := c.Delete().Where(federatedidentity.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &FederatedIdentityDeleteOne{builder}
+}
+
+// Query returns a query builder for FederatedIdentity.
+func (c *FederatedIdentityClient) Query() *FederatedIdentityQuery {
+	return &FederatedIdentityQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeFederatedIdentity},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a FederatedIdentity entity by its id.
+func (c *FederatedIdentityClient) Get(ctx context.Context, id int) (*FederatedIdentity, error) {
+	return c.Query().Where(federatedidentity.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *FederatedIdentityClient) GetX(ctx context.Context, id int) *FederatedIdentity {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a FederatedIdentity.
+func (c *FederatedIdentityClient) QueryUser(fi *FederatedIdentity) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := fi.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(federatedidentity.Table, federatedidentity.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, federatedidentity.UserTable, federatedidentity.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(fi.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *FederatedIdentityClient) Hooks() []Hook {
+	hooks := c.hooks.FederatedIdentity
+	return append(hooks[:len(hooks):len(hooks)], federatedidentity.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *FederatedIdentityClient) Interceptors() []Interceptor {
+	inters := c.inters.FederatedIdentity
+	return append(inters[:len(inters):len(inters)], federatedidentity.Interceptors[:]...)
+}
+
+func (c *FederatedIdentityClient) mutate(ctx context.Context, m *FederatedIdentityMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&FederatedIdentityCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&FederatedIdentityUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&FederatedIdentityUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&FederatedIdentityDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown FederatedIdentity mutation op: %q", m.Op())
 	}
 }
 
@@ -3071,6 +3230,22 @@ func (c *UserClient) QueryOauthGrants(u *User) *OAuthGrantQuery {
 	return query
 }
 
+// QueryFederatedIdentities queries the federated_identities edge of a User.
+func (c *UserClient) QueryFederatedIdentities(u *User) *FederatedIdentityQuery {
+	query := (&FederatedIdentityClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(federatedidentity.Table, federatedidentity.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.FederatedIdentitiesTable, user.FederatedIdentitiesColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	hooks := c.hooks.User
@@ -3101,14 +3276,14 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		DavAccount, DirectLink, Entity, File, FsEvent, Group, Metadata, Node,
-		OAuthClient, OAuthGrant, Passkey, Setting, Share, StoragePolicy, Task,
-		User []ent.Hook
+		DavAccount, DirectLink, Entity, FederatedIdentity, File, FsEvent, Group,
+		Metadata, Node, OAuthClient, OAuthGrant, Passkey, Setting, Share,
+		StoragePolicy, Task, User []ent.Hook
 	}
 	inters struct {
-		DavAccount, DirectLink, Entity, File, FsEvent, Group, Metadata, Node,
-		OAuthClient, OAuthGrant, Passkey, Setting, Share, StoragePolicy, Task,
-		User []ent.Interceptor
+		DavAccount, DirectLink, Entity, FederatedIdentity, File, FsEvent, Group,
+		Metadata, Node, OAuthClient, OAuthGrant, Passkey, Setting, Share,
+		StoragePolicy, Task, User []ent.Interceptor
 	}
 )
 

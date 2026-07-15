@@ -20,6 +20,8 @@ type Tx struct {
 	DirectLink *DirectLinkClient
 	// Entity is the client for interacting with the Entity builders.
 	Entity *EntityClient
+	// FederatedIdentity is the client for interacting with the FederatedIdentity builders.
+	FederatedIdentity *FederatedIdentityClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
 	// FsEvent is the client for interacting with the FsEvent builders.
@@ -180,6 +182,7 @@ func (tx *Tx) init() {
 	tx.DavAccount = NewDavAccountClient(tx.config)
 	tx.DirectLink = NewDirectLinkClient(tx.config)
 	tx.Entity = NewEntityClient(tx.config)
+	tx.FederatedIdentity = NewFederatedIdentityClient(tx.config)
 	tx.File = NewFileClient(tx.config)
 	tx.FsEvent = NewFsEventClient(tx.config)
 	tx.Group = NewGroupClient(tx.config)

@@ -253,6 +253,31 @@ type FTSTikaExtractorSetting struct {
 	MaxFileSize int64
 }
 
+// SSOProvider defines an external OAuth2/OIDC identity provider for SSO login.
+type SSOProvider struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Icon         string   `json:"icon,omitempty"`
+	Type         string   `json:"type"` // "feishu" | "oidc" | "oauth2"
+	ClientID     string   `json:"client_id"`
+	ClientSecret string   `json:"client_secret,omitempty"`
+	Issuer       string   `json:"issuer,omitempty"`
+	AuthURL      string   `json:"auth_url,omitempty"`
+	TokenURL     string   `json:"token_url,omitempty"`
+	UserInfoURL  string   `json:"userinfo_url,omitempty"`
+	Scopes       []string `json:"scopes,omitempty"`
+	AllowSignup  bool     `json:"allow_signup"`
+}
+
+// SSOPublicProvider is the public-facing subset of SSOProvider, safe to expose
+// to the frontend (client_secret excluded).
+type SSOPublicProvider struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Icon string `json:"icon,omitempty"`
+	Type string `json:"type"`
+}
+
 type MasterEncryptKeyVaultType string
 
 const (

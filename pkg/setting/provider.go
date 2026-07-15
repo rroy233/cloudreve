@@ -26,6 +26,10 @@ type (
 		RegisterEnabled(ctx context.Context) bool
 		// AuthnEnabled returns true if Webauthn is enabled.
 		AuthnEnabled(ctx context.Context) bool
+		// SSOEnabled returns true if SSO login is enabled.
+		SSOEnabled(ctx context.Context) bool
+		// SSOProviders returns the configured SSO providers.
+		SSOProviders(ctx context.Context) []SSOProvider
 		// RegCaptchaEnabled returns true if registration captcha is enabled.
 		RegCaptchaEnabled(ctx context.Context) bool
 		// LoginCaptchaEnabled returns true if login captcha is enabled.
@@ -857,6 +861,19 @@ func (s *settingProvider) ForgotPasswordCaptchaEnabled(ctx context.Context) bool
 
 func (s *settingProvider) AuthnEnabled(ctx context.Context) bool {
 	return s.getBoolean(ctx, "authn_enabled", false)
+}
+
+func (s *settingProvider) SSOEnabled(ctx context.Context) bool {
+	return s.getBoolean(ctx, "sso_enabled", false)
+}
+
+func (s *settingProvider) SSOProviders(ctx context.Context) []SSOProvider {
+	raw := s.getString(ctx, "sso_providers", "[]")
+	var providers []SSOProvider
+	if err := json.Unmarshal([]byte(raw), &providers); err != nil {
+		return nil
+	}
+	return providers
 }
 
 func (s *settingProvider) RegisterEnabled(ctx context.Context) bool {

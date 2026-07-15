@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/cloudreve/Cloudreve/v4/ent/davaccount"
 	"github.com/cloudreve/Cloudreve/v4/ent/entity"
+	"github.com/cloudreve/Cloudreve/v4/ent/federatedidentity"
 	"github.com/cloudreve/Cloudreve/v4/ent/file"
 	"github.com/cloudreve/Cloudreve/v4/ent/fsevent"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
@@ -344,6 +345,21 @@ func (uu *UserUpdate) AddOauthGrants(o ...*OAuthGrant) *UserUpdate {
 	return uu.AddOauthGrantIDs(ids...)
 }
 
+// AddFederatedIdentityIDs adds the "federated_identities" edge to the FederatedIdentity entity by IDs.
+func (uu *UserUpdate) AddFederatedIdentityIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddFederatedIdentityIDs(ids...)
+	return uu
+}
+
+// AddFederatedIdentities adds the "federated_identities" edges to the FederatedIdentity entity.
+func (uu *UserUpdate) AddFederatedIdentities(f ...*FederatedIdentity) *UserUpdate {
+	ids := make([]int, len(f))
+	for i := range f {
+		ids[i] = f[i].ID
+	}
+	return uu.AddFederatedIdentityIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
@@ -521,6 +537,27 @@ func (uu *UserUpdate) RemoveOauthGrants(o ...*OAuthGrant) *UserUpdate {
 		ids[i] = o[i].ID
 	}
 	return uu.RemoveOauthGrantIDs(ids...)
+}
+
+// ClearFederatedIdentities clears all "federated_identities" edges to the FederatedIdentity entity.
+func (uu *UserUpdate) ClearFederatedIdentities() *UserUpdate {
+	uu.mutation.ClearFederatedIdentities()
+	return uu
+}
+
+// RemoveFederatedIdentityIDs removes the "federated_identities" edge to FederatedIdentity entities by IDs.
+func (uu *UserUpdate) RemoveFederatedIdentityIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveFederatedIdentityIDs(ids...)
+	return uu
+}
+
+// RemoveFederatedIdentities removes "federated_identities" edges to FederatedIdentity entities.
+func (uu *UserUpdate) RemoveFederatedIdentities(f ...*FederatedIdentity) *UserUpdate {
+	ids := make([]int, len(f))
+	for i := range f {
+		ids[i] = f[i].ID
+	}
+	return uu.RemoveFederatedIdentityIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -1037,6 +1074,51 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if uu.mutation.FederatedIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedFederatedIdentitiesIDs(); len(nodes) > 0 && !uu.mutation.FederatedIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.FederatedIdentitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, uu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{user.Label}
@@ -1363,6 +1445,21 @@ func (uuo *UserUpdateOne) AddOauthGrants(o ...*OAuthGrant) *UserUpdateOne {
 	return uuo.AddOauthGrantIDs(ids...)
 }
 
+// AddFederatedIdentityIDs adds the "federated_identities" edge to the FederatedIdentity entity by IDs.
+func (uuo *UserUpdateOne) AddFederatedIdentityIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddFederatedIdentityIDs(ids...)
+	return uuo
+}
+
+// AddFederatedIdentities adds the "federated_identities" edges to the FederatedIdentity entity.
+func (uuo *UserUpdateOne) AddFederatedIdentities(f ...*FederatedIdentity) *UserUpdateOne {
+	ids := make([]int, len(f))
+	for i := range f {
+		ids[i] = f[i].ID
+	}
+	return uuo.AddFederatedIdentityIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
@@ -1540,6 +1637,27 @@ func (uuo *UserUpdateOne) RemoveOauthGrants(o ...*OAuthGrant) *UserUpdateOne {
 		ids[i] = o[i].ID
 	}
 	return uuo.RemoveOauthGrantIDs(ids...)
+}
+
+// ClearFederatedIdentities clears all "federated_identities" edges to the FederatedIdentity entity.
+func (uuo *UserUpdateOne) ClearFederatedIdentities() *UserUpdateOne {
+	uuo.mutation.ClearFederatedIdentities()
+	return uuo
+}
+
+// RemoveFederatedIdentityIDs removes the "federated_identities" edge to FederatedIdentity entities by IDs.
+func (uuo *UserUpdateOne) RemoveFederatedIdentityIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveFederatedIdentityIDs(ids...)
+	return uuo
+}
+
+// RemoveFederatedIdentities removes "federated_identities" edges to FederatedIdentity entities.
+func (uuo *UserUpdateOne) RemoveFederatedIdentities(f ...*FederatedIdentity) *UserUpdateOne {
+	ids := make([]int, len(f))
+	for i := range f {
+		ids[i] = f[i].ID
+	}
+	return uuo.RemoveFederatedIdentityIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -2079,6 +2197,51 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(oauthgrant.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.FederatedIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedFederatedIdentitiesIDs(); len(nodes) > 0 && !uuo.mutation.FederatedIdentitiesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.FederatedIdentitiesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.FederatedIdentitiesTable,
+			Columns: []string{user.FederatedIdentitiesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(federatedidentity.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

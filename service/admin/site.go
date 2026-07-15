@@ -214,9 +214,10 @@ type (
 
 var (
 	preprocessors = map[string]SettingPreProcessor{
-		"siteURL":      siteUrlPreProcessor,
-		"mime_mapping": mimeMappingPreProcessor,
-		"secret_key":   secretKeyPreProcessor,
+		"siteURL":       siteUrlPreProcessor,
+		"mime_mapping":  mimeMappingPreProcessor,
+		"secret_key":    secretKeyPreProcessor,
+		"sso_providers": ssoProvidersPreProcessor,
 	}
 	postprocessors = map[string]SettingPostProcessor{
 		"mime_mapping":                               mimeMappingPostProcessor,
@@ -361,6 +362,50 @@ func mimeMappingPreProcessor(ctx context.Context, settings map[string]string) er
 		return serializer.NewError(serializer.CodeParamErr, "Invalid mime mapping", err)
 	}
 
+	return nil
+}
+
+func ssoProvidersPreProcessor(ctx context.Context, settings map[string]string) error {
+	raw, ok := settings["sso_providers"]
+	if !ok {
+		return nil
+	}
+
+	var providers []setting.SSOProvider
+	if err := json.Unmarshal([]byte(raw), &providers); err != nil {
+		return serializer.NewError(serializer.CodeParamErr, "Invalid SSO providers JSON", err)
+	}
+
+	// Validate and preserve client_secret for unchanged entries
+	dep := dependency.FromContext(ctx)
+	existingProviders := dep.SettingProvider().SSOProviders(ctx)
+
+	for i, p := range providers {
+		if p.ID == "" {
+			return serializer.NewError(serializer.CodeParamErr, fmt.Sprintf("SSO provider[%d] missing id", i), nil)
+		}
+		if p.Name == "" {
+			return serializer.NewError(serializer.CodeParamErr, fmt.Sprintf("SSO provider[%d] missing name", i), nil)
+		}
+		if p.ClientID == "" {
+			return serializer.NewError(serializer.CodeParamErr, fmt.Sprintf("SSO provider[%d] missing client_id", i), nil)
+		}
+
+		// If client_secret is placeholder "***", preserve existing value
+		if p.ClientSecret == "***" {
+			for _, ep := range existingProviders {
+				if ep.ID == p.ID {
+					p.ClientSecret = ep.ClientSecret
+					break
+				}
+			}
+		}
+
+		providers[i] = p
+	}
+
+	result, _ := json.Marshal(providers)
+	settings["sso_providers"] = string(result)
 	return nil
 }
 

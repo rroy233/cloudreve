@@ -73,10 +73,15 @@ func (c *settingClient) Gets(ctx context.Context, names []string) (map[string]st
 
 func (c *settingClient) Set(ctx context.Context, settings map[string]string) error {
 	for k, v := range settings {
-		if err := c.client.Setting.Update().Where(setting.Name(k)).SetValue(v).Exec(ctx); err != nil {
-			return fmt.Errorf("failed to create setting %q: %w", k, err)
+		err := c.client.Setting.Create().
+			SetName(k).
+			SetValue(v).
+			OnConflictColumns(setting.FieldName).
+			UpdateNewValues().
+			Exec(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to save setting %q: %w", k, err)
 		}
-
 	}
 
 	return nil
@@ -659,6 +664,8 @@ var DefaultSettings = map[string]string{
 	"logto_config":                               `{"direct_sign_in":true,"display_name":"vas.sso"}`,
 	"qq_login":                                   `0`,
 	"qq_login_config":                            `{"direct_sign_in":false}`,
+	"sso_enabled":                                "0",
+	"sso_providers":                              "[]",
 	"license":                                    "",
 	"custom_nav_items":                           "[]",
 	"headless_footer_html":                       "",

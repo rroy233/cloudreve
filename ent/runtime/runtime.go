@@ -8,6 +8,7 @@ import (
 	"github.com/cloudreve/Cloudreve/v4/ent/davaccount"
 	"github.com/cloudreve/Cloudreve/v4/ent/directlink"
 	"github.com/cloudreve/Cloudreve/v4/ent/entity"
+	"github.com/cloudreve/Cloudreve/v4/ent/federatedidentity"
 	"github.com/cloudreve/Cloudreve/v4/ent/file"
 	"github.com/cloudreve/Cloudreve/v4/ent/fsevent"
 	"github.com/cloudreve/Cloudreve/v4/ent/group"
@@ -90,6 +91,25 @@ func init() {
 	entityDescReferenceCount := entityFields[3].Descriptor()
 	// entity.DefaultReferenceCount holds the default value on creation for the reference_count field.
 	entity.DefaultReferenceCount = entityDescReferenceCount.Default.(int)
+	federatedidentityMixin := schema.FederatedIdentity{}.Mixin()
+	federatedidentityMixinHooks0 := federatedidentityMixin[0].Hooks()
+	federatedidentity.Hooks[0] = federatedidentityMixinHooks0[0]
+	federatedidentityMixinInters0 := federatedidentityMixin[0].Interceptors()
+	federatedidentity.Interceptors[0] = federatedidentityMixinInters0[0]
+	federatedidentityMixinFields0 := federatedidentityMixin[0].Fields()
+	_ = federatedidentityMixinFields0
+	federatedidentityFields := schema.FederatedIdentity{}.Fields()
+	_ = federatedidentityFields
+	// federatedidentityDescCreatedAt is the schema descriptor for created_at field.
+	federatedidentityDescCreatedAt := federatedidentityMixinFields0[0].Descriptor()
+	// federatedidentity.DefaultCreatedAt holds the default value on creation for the created_at field.
+	federatedidentity.DefaultCreatedAt = federatedidentityDescCreatedAt.Default.(func() time.Time)
+	// federatedidentityDescUpdatedAt is the schema descriptor for updated_at field.
+	federatedidentityDescUpdatedAt := federatedidentityMixinFields0[1].Descriptor()
+	// federatedidentity.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	federatedidentity.DefaultUpdatedAt = federatedidentityDescUpdatedAt.Default.(func() time.Time)
+	// federatedidentity.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	federatedidentity.UpdateDefaultUpdatedAt = federatedidentityDescUpdatedAt.UpdateDefault.(func() time.Time)
 	fileHooks := schema.File{}.Hooks()
 	file.Hooks[0] = fileHooks[0]
 	fileFields := schema.File{}.Fields()
